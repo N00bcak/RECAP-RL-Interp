@@ -196,6 +196,18 @@ class HookedAttentionNeuronLayer(AttentionNeuronLayer):
         activations_dict['output'] = torch.tanh(output)
 
         return torch.tanh(output), activations_dict
+    
+    def permute_hidden_states(self, perm_ix):
+        """
+        Permute the hidden state according to the given indices.
+        This is useful for debugging and understanding the model's behavior.
+        """
+        if self.hx is not None:
+            self.hx = (
+                self.hx[0][perm_ix],
+                self.hx[1][perm_ix],
+            )
+        # Otherwise, no-op, which is okay because hx will be zeros anyway.
 
 class VisionAttentionNeuronLayer(nn.Module):
     """Permutation invariant layer for vision tasks."""

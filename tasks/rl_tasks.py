@@ -9,6 +9,7 @@ import pybullet_envs
 from tasks import atari_wrappers
 from tasks.base_task import BaseTask
 from tasks.cartpole_env import CartPoleSwingUpHarderEnv
+from warnings import warn
 
 
 class RLTask(BaseTask):
@@ -175,8 +176,14 @@ class CartPoleSwingUpRandPermuteTask(CartPoleSwingUpTask):
                  shuffle_on_reset=False,
                  render_mode = 'human',
                  v=True,
+                 permute_freq=None,
                  num_noise_channels=0):
-        super(CartPoleSwingUpRandPermuteTask, self).__init__(shuffle_on_reset=shuffle_on_reset, v=v, render_mode = 'human')
+        super(CartPoleSwingUpRandPermuteTask, self).__init__(
+            shuffle_on_reset=shuffle_on_reset, 
+            v=v, 
+            render_mode = 'human'
+        )
+        
         self.shuffle_on_reset = shuffle_on_reset
         self.perm_ix = 0
         self.render_mode = render_mode
@@ -189,17 +196,75 @@ class CartPoleSwingUpRandPermuteTask(CartPoleSwingUpTask):
         # This is to ensure that the perturbations are consistent across
         # different runs, while the permutation is randomized.
         self.perturb_rnd = np.random.RandomState(seed=12345)
+        self.permute_freq = permute_freq
+
+        if self.permute_freq is None:
+            warn("permute_freq is None. I don't know why you would be using this environment THEN, but okay.")
+
 
     def seed(self, seed=None):
         self.perturb_rnd = np.random.RandomState(seed=seed + 12345)
         return super(CartPoleSwingUpRandPermuteTask, self).seed(seed)
 
     def modify_obs(self, obs):
-        if (self.step_cnt + 1) % 10 == 0:
+        if self.permute_freq is not None and (self.step_cnt + 1) % self.permute_freq == 0:
             self.perturb_rnd.shuffle(self.perm_ix)
             if self.verbose:
                 print('New perm_ix: {} Step: {}'.format(self.perm_ix, self.step_cnt + 1))
         return super(CartPoleSwingUpRandPermuteTask, self).modify_obs(obs)
+    
+
+    def rollout(self, solution, evaluation=False):
+        self.eval_mode = evaluation
+        self.reset_for_rollout()
+        solution.reset()
+        if hasattr(self, 'register_solution'):
+            self.register_solution(solution)
+
+        if self.render_mode is not None and hasattr(self.env, 'render'):
+            frames = []
+            permutations = []
+        start_time = time.time()
+
+        obs = self.env.reset()
+        obs = self.modify_obs(obs)
+        if self.render_mode is not None and hasattr(self.env, 'render'):
+            frames.append(self.show_gui())
+            permutations = [self.perm_ix.copy()]
+        else:
+            self.show_gui()
+        ep_reward = 0
+        done = False
+        while not done:
+            action = solution.get_action(obs)
+            action = self.modify_action(action)
+            obs, reward, done, info = self.env.step(action)
+
+            obs = self.modify_obs(obs)
+            if self.permute_freq is not None and (self.step_cnt + 1) % self.permute_freq == 0:
+                solution.permute_hidden_states(self.perm_ix)
+
+            reward = self.modify_reward(reward, done)
+            done = self.modify_done(reward, done)
+
+            self.step_cnt += 1
+            ep_reward += reward
+            if self.render_mode is not None and hasattr(self.env, 'render'):
+                permutations.append(self.perm_ix.copy())
+                frames.append(self.show_gui())
+            else:
+                self.show_gui()
+
+        time_cost = time.time() - start_time
+        if self.verbose:
+            print('Rollout time={0:.2f}s, steps={1}, reward={2:.2f}'.format(
+                time_cost, self.step_cnt, ep_reward))
+
+        return (
+            ep_reward, frames, permutations
+            if self.render_mode is not None and hasattr(self.env, 'render') 
+            else ep_reward
+        )
 
 @gin.configurable
 class CarRacingTask(RLTask):

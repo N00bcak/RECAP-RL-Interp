@@ -323,6 +323,9 @@ class HookedPIFCSolution(BaseTorchSolution):
         self.full_hook_data.append(self.curr_step_hook_data)
         self.curr_step_hook_data = {'pi_layer_activations': None, 'net_activations': {}}
         return self.prev_act.squeeze(0).cpu().numpy()
+    
+    def permute_hidden_states(self, perm_ix):
+        self.pi_layer.permute_hidden_states(perm_ix)
 
     def reset(self):
         self.prev_act = torch.zeros(1, self.act_dim)
