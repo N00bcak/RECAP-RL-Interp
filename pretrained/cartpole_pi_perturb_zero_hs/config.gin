@@ -21,5 +21,5 @@ rl_tasks.CartPoleSwingUpRandPermuteTask.render_mode = 'rgb_array'
 rl_tasks.CartPoleSwingUpRandPermuteTask.v = True
 rl_tasks.CartPoleSwingUpRandPermuteTask.permute_freq = 250
 rl_tasks.CartPoleSwingUpRandPermuteTask.shuffle_hs_on_permute = False
-rl_tasks.CartPoleSwingUpRandPermuteTask.zero_hs_on_permute = False
+rl_tasks.CartPoleSwingUpRandPermuteTask.zero_hs_on_permute = True
 util.create_task.task_loader = @rl_tasks.CartPoleSwingUpRandPermuteTask()

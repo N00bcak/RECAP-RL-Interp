@@ -142,3 +142,10 @@ log/
 dashboards/
 **/hook_data
 **/videos
+
+*.aux
+*.bbl
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
