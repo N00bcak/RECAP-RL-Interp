@@ -202,12 +202,30 @@ class HookedAttentionNeuronLayer(AttentionNeuronLayer):
         Permute the hidden state according to the given indices.
         This is useful for debugging and understanding the model's behavior.
         """
+        # inv_perm = np.argsort(perm_ix)
         if self.hx is not None:
             self.hx = (
-                self.hx[0][perm_ix],
-                self.hx[1][perm_ix],
+                self.hx[0][perm_ix].contiguous(),
+                self.hx[1][perm_ix].contiguous(),
             )
         # Otherwise, no-op, which is okay because hx will be zeros anyway.
+    
+    def zero_hidden_states(self):
+        """
+        Reset the hidden states to zero.
+        This is useful for debugging and understanding the model's behavior.
+        """
+        self.hx = (
+            torch.zeros_like(self.hx[0]),
+            torch.zeros_like(self.hx[1]),
+        ) if self.hx is not None else None
+
+    # def permute_pos_embed(self, perm_ix):
+    #     """
+    #     Permute the positional embedding according to the given indices.
+    #     This is useful for debugging and understanding the model's behavior.
+    #     """
+    #     self.pos_embedding = self.pos_embedding[perm_ix]
 
 class VisionAttentionNeuronLayer(nn.Module):
     """Permutation invariant layer for vision tasks."""

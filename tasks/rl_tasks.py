@@ -177,13 +177,15 @@ class CartPoleSwingUpRandPermuteTask(CartPoleSwingUpTask):
                  render_mode = 'human',
                  v=True,
                  permute_freq=None,
+                 shuffle_hs_on_permute = False,
+                 zero_hs_on_permute=False,
                  num_noise_channels=0):
         super(CartPoleSwingUpRandPermuteTask, self).__init__(
             shuffle_on_reset=shuffle_on_reset, 
             v=v, 
             render_mode = 'human'
         )
-        
+
         self.shuffle_on_reset = shuffle_on_reset
         self.perm_ix = 0
         self.render_mode = render_mode
@@ -195,8 +197,10 @@ class CartPoleSwingUpRandPermuteTask(CartPoleSwingUpTask):
         # Maintain a separate random state for perturbations.
         # This is to ensure that the perturbations are consistent across
         # different runs, while the permutation is randomized.
-        self.perturb_rnd = np.random.RandomState(seed=12345)
+        self.perturb_rnd = np.random.RandomState(seed = 42069)#seed=12345)
         self.permute_freq = permute_freq
+        self.shuffle_hs_on_permute = shuffle_hs_on_permute
+        self.zero_hs_on_permute = zero_hs_on_permute
 
         if self.permute_freq is None:
             warn("permute_freq is None. I don't know why you would be using this environment THEN, but okay.")
@@ -236,18 +240,29 @@ class CartPoleSwingUpRandPermuteTask(CartPoleSwingUpTask):
         ep_reward = 0
         done = False
         while not done:
+            
             action = solution.get_action(obs)
             action = self.modify_action(action)
+
             obs, reward, done, info = self.env.step(action)
 
             obs = self.modify_obs(obs)
-            if self.permute_freq is not None and (self.step_cnt + 1) % self.permute_freq == 0:
+            if self.permute_freq is not None and self.shuffle_hs_on_permute and (self.step_cnt + 1) % self.permute_freq == 0:
+                # print(f"Old Hidden State: {solution.pi_layer.hx}")
                 solution.permute_hidden_states(self.perm_ix)
+                # solution.permute_pos_embed(self.perm_ix)
+                print('Permuting hidden states at step: {}'.format(self.step_cnt + 1))
+                # print(f"New Hidden State: {solution.pi_layer.hx}")
+            elif self.permute_freq is not None and self.zero_hs_on_permute and (self.step_cnt + 1) % self.permute_freq == 0:
+                # print(f"Old Hidden State: {solution.pi_layer.hx}")
+                solution.zero_hidden_states()
+                print('Zeroing hidden states at step: {}'.format(self.step_cnt + 1))
+                # print(f"New Hidden State: {solution.pi_layer.hx}")
 
             reward = self.modify_reward(reward, done)
             done = self.modify_done(reward, done)
-
             self.step_cnt += 1
+
             ep_reward += reward
             if self.render_mode is not None and hasattr(self.env, 'render'):
                 permutations.append(self.perm_ix.copy())
