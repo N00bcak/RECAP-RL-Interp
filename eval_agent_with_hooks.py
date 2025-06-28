@@ -186,7 +186,7 @@ def main(config):
             # 'attention_matrix': modify([(1., (0, 4))])
 
             # Mean Ablation
-            'attention_matrix': mean_ablate([(0, 4)])
+            # 'attention_matrix': mean_ablate([(0, 4)])
             # 'attention_matrix': compose([
             #     set_to(0, 1, -1),
             #     set_to(1, 1, -1),
@@ -287,13 +287,13 @@ def main(config):
         reward, frames, permutations = task.rollout(solution=solution, evaluation=True)
 
         # Shape: (n_frames, d_feats, d_obspos)
-        attention_matrices = np.array([
-            x['pi_layer_activations']['attention_matrix'].numpy() 
-            for x in solution.full_hook_data
-        ])
+        # attention_matrices = np.array([
+        #     x['pi_layer_activations']['attention_matrix'].numpy() 
+        #     for x in solution.full_hook_data
+        # ])
 
         # Scale the matrix to the desired size.
-        attention_matrices = np.kron(attention_matrices, np.ones((1, 16, 16)))
+        # attention_matrices = np.kron(attention_matrices, np.ones((1, 16, 16)))
 
         # Shape: (n_frames, h, w, c)
         frames = np.array(frames[:-1])
@@ -354,9 +354,10 @@ def main(config):
 
     logger.info(f'Avg reward: {np.mean(rewards):.2f}, sd of mean: {np.std(rewards) / np.sqrt(len(rewards)):.2f}')
     logger.info(f'Time per rollout: {np.mean(time_costs)}s')
-
+    return np.mean(rewards), np.std(rewards) / np.sqrt(len(rewards))
 
 if __name__ == '__main__':
     args = parse_args()
+    print(os.path.join(args.log_dir, 'config.gin'))
     gin.parse_config_file(os.path.join(args.log_dir, 'config.gin'))
     main(args)
